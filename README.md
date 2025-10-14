@@ -1,2 +1,2 @@
 # clarko
-A simple medication tracker
+A simple medication tracker 💊
