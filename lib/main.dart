@@ -93,12 +93,24 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       Medication(name: 'Morning Dose', icon: FontAwesomeIcons.cloudSun),
       Medication(name: 'Evening Dose', icon: FontAwesomeIcons.cloudMoon),
     ];
-    _loadMedicationState();
+    // Register callback to update UI when notification action is triggered
+    NotificationService.instance.onMedicationStateChanged = () {
+      print('Callback triggered - reloading medication state');
+      if (mounted) {
+        _loadMedicationState();
+      }
+    };
+    // Load medication state after the first frame to avoid blocking UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMedicationState();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // Clear the callback when disposing
+    NotificationService.instance.onMedicationStateChanged = null;
     super.dispose();
   }
 
@@ -112,43 +124,61 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _loadMedicationState() async {
+    print('Loading medication state...');
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      for (int i = 0; i < _medications.length; i++) {
-        final med = _medications[i];
-        // Load 'isTaken' status
-        med.isTaken = prefs.getBool(_getDailyKey(med.name)) ?? false;
 
-        // Load reminder time
-        final hour = prefs.getInt('${med.name}_reminder_hour');
-        final minute = prefs.getInt('${med.name}_reminder_minute');
+    // Load data first
+    for (int i = 0; i < _medications.length; i++) {
+      final med = _medications[i];
+      // Load 'isTaken' status
+      final key = _getDailyKey(med.name);
+      final isTaken = prefs.getBool(key) ?? false;
+      print('${med.name}: isTaken = $isTaken (key: $key)');
+      med.isTaken = isTaken;
 
-        if (hour != null && minute != null) {
-          med.reminderTime = TimeOfDay(hour: hour, minute: minute);
-          // Re-schedule the notification on app start
-          final now = DateTime.now();
-          final scheduledTime =
-              DateTime(now.year, now.month, now.day, hour, minute);
-          final notificationId = _medications.indexOf(med);
+      // Load reminder time
+      final hour = prefs.getInt('${med.name}_reminder_hour');
+      final minute = prefs.getInt('${med.name}_reminder_minute');
 
-          // It's good practice to cancel any old notification before scheduling a new one
-          NotificationService.instance.cancelNotification(notificationId);
-          NotificationService.instance.scheduleDailyNotification(
-              notificationId, // Pass the medication name in the payload
-              "Time for your ${med.name}!",
-              "Don't forget to take your medication.",
-              scheduledTime);
-        }
+      if (hour != null && minute != null) {
+        med.reminderTime = TimeOfDay(hour: hour, minute: minute);
       }
-    });
+    }
+
+    // Update UI first
+    if (mounted) {
+      print('Updating UI with new medication state');
+      setState(() {});
+    } else {
+      print('Widget not mounted, skipping setState');
+    }
+
+    // Schedule notifications asynchronously after UI update
+    for (int i = 0; i < _medications.length; i++) {
+      final med = _medications[i];
+      if (med.reminderTime != null) {
+        final now = DateTime.now();
+        final scheduledTime = DateTime(now.year, now.month, now.day,
+            med.reminderTime!.hour, med.reminderTime!.minute);
+        final notificationId = i;
+
+        // It's good practice to cancel any old notification before scheduling a new one
+        await NotificationService.instance.cancelNotification(notificationId);
+        await NotificationService.instance.scheduleDailyNotification(
+            notificationId,
+            "Time for your ${med.name}!",
+            "Don't forget to take your medication.",
+            scheduledTime);
+      }
+    }
   }
 
   Future<void> _toggleMedication(Medication medication) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       medication.isTaken = !medication.isTaken;
-      prefs.setBool(_getDailyKey(medication.name), medication.isTaken);
     });
+    await prefs.setBool(_getDailyKey(medication.name), medication.isTaken);
   }
 
   Future<void> _selectTime(BuildContext context, Medication medication) async {

@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'dart:ui';
 
 class NotificationService {
@@ -12,6 +14,9 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  
+  // Callback to notify the app when medication state changes via notification
+  VoidCallback? onMedicationStateChanged;
 
   Future<void> init() async {
     tz.initializeTimeZones();
@@ -138,9 +143,58 @@ void onDidReceiveBackgroundNotificationResponse(
     final key = '${medName}_${now.year}-${now.month}-${now.day}';
 
     await prefs.setBool(key, true);
+    
+    // Note: We can't call the callback from background isolate,
+    // but the app will reload state when it resumes (handled in didChangeAppLifecycleState)
   }
 }
 
 void onDidReceiveNotificationResponse(NotificationResponse response) async {
   // Handle notification tap when app is in foreground/background but not terminated.
+  print('Notification response received - actionId: ${response.actionId}, payload: ${response.payload}');
+  
+  if (response.actionId == 'MARK_AS_TAKEN_ACTION' && response.payload != null) {
+    print('Foreground action tapped: ${response.payload}');
+    final prefs = await SharedPreferences.getInstance();
+    final payload = response.payload;
+    if (payload == null) {
+      print('Payload is null, returning');
+      return;
+    }
+
+    // Extract medication name from the title payload
+    // e.g., "Time for your Morning Dose!" -> "Morning Dose"
+    String? medName;
+    if (payload.contains("Morning Dose")) medName = "Morning Dose";
+    if (payload.contains("Evening Dose")) medName = "Evening Dose";
+    
+    print('Extracted medication name: $medName');
+    if (medName == null) {
+      print('Could not extract medication name from payload: $payload');
+      return;
+    }
+
+    // Create the key for today's dose
+    final now = DateTime.now();
+    final key = '${medName}_${now.year}-${now.month}-${now.day}';
+    print('Setting key $key to true');
+
+    await prefs.setBool(key, true);
+    print('SharedPreferences updated successfully');
+    
+    // Notify the app to update UI - ensure it runs on the main isolate
+    final callback = NotificationService.instance.onMedicationStateChanged;
+    if (callback != null) {
+      print('Calling callback to update UI');
+      // Use scheduleMicrotask to ensure it runs on the main isolate
+      scheduleMicrotask(() {
+        callback();
+      });
+    } else {
+      print('Warning: onMedicationStateChanged callback is null!');
+    }
+  } else if (response.actionId == null) {
+    // User tapped the notification itself (not the action button)
+    print('Notification tapped (not action button)');
+  }
 }
