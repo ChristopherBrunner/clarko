@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_background"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Clarko"
+            android:fontFamily="@font/pacifico"
+            android:textColor="@color/widget_title"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/widget_streak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No streak yet"
+            android:textColor="@color/widget_subtitle"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Dose 0 -->
+    <LinearLayout
+        android:id="@+id/dose0_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/dose0_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_sun"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/dose0_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Morning"
+            android:textColor="@color/widget_title"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/dose0_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
+            android:text="8:00 AM"
+            android:textColor="@color/widget_subtitle"
+            android:textSize="12sp" />
+
+        <ImageView
+            android:id="@+id/dose0_check"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_check_empty"
+            android:contentDescription="Toggle taken" />
+    </LinearLayout>
+
+    <!-- Dose 1 -->
+    <LinearLayout
+        android:id="@+id/dose1_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/dose1_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_moon"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/dose1_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Night"
+            android:textColor="@color/widget_title"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/dose1_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
+            android:text="8:00 PM"
+            android:textColor="@color/widget_subtitle"
+            android:textSize="12sp" />
+
+        <ImageView
+            android:id="@+id/dose1_check"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_check_empty"
+            android:contentDescription="Toggle taken" />
+    </LinearLayout>
+
+</LinearLayout>

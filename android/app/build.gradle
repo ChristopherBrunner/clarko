@@ -29,6 +29,8 @@ android {
     ndkVersion = "25.1.8937393"
 
     compileOptions {
+        // Required by flutter_local_notifications for scheduled notifications.
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
@@ -53,10 +55,19 @@ android {
     }
 }
 
+// Pin the Kotlin stdlib so AGP 7.4.2's bundled D8 can dex it (newer stdlib
+// versions get pulled in transitively and fail to dex).
+configurations.all {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+    }
+}
+
 flutter {
     source = "../.."
 }
 
 dependencies {
     implementation "com.google.android.material:material:1.10.0"
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
 }
