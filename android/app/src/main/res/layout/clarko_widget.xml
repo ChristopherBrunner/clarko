@@ -16,6 +16,7 @@
         android:gravity="center_vertical">
 
         <TextView
+            android:id="@+id/widget_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -39,7 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center">
 
         <ImageView
             android:id="@+id/dose0_icon"
@@ -86,7 +87,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center">
 
         <ImageView
             android:id="@+id/dose1_icon"
@@ -119,6 +120,102 @@
 
         <ImageView
             android:id="@+id/dose1_check"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_check_empty"
+            android:contentDescription="Toggle taken" />
+    </LinearLayout>
+
+    <!-- Dose 2 -->
+    <LinearLayout
+        android:id="@+id/dose2_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="6dp">
+
+        <ImageView
+            android:id="@+id/dose2_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_sun"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/dose2_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Dose"
+            android:textColor="@color/widget_title"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/dose2_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
+            android:text="12:00 PM"
+            android:textColor="@color/widget_subtitle"
+            android:textSize="12sp" />
+
+        <ImageView
+            android:id="@+id/dose2_check"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_check_empty"
+            android:contentDescription="Toggle taken" />
+    </LinearLayout>
+
+    <!-- Dose 3 -->
+    <LinearLayout
+        android:id="@+id/dose3_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="6dp">
+
+        <ImageView
+            android:id="@+id/dose3_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_moon"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/dose3_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Dose"
+            android:textColor="@color/widget_title"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/dose3_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
+            android:text="12:00 PM"
+            android:textColor="@color/widget_subtitle"
+            android:textSize="12sp" />
+
+        <ImageView
+            android:id="@+id/dose3_check"
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:layout_marginStart="6dp"

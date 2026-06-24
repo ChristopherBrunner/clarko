@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../models/dose.dart';
 import '../models/medication_log.dart';
@@ -13,7 +13,19 @@ class AppState extends ChangeNotifier {
 
   List<Dose> _doses = [];
   MedicationLog _log = MedicationLog.empty();
+  ThemeMode _themeMode = ThemeMode.system;
   bool _loaded = false;
+
+  ThemeMode get themeMode => _themeMode;
+  bool isDark(BuildContext context) => _themeMode == ThemeMode.system
+      ? MediaQuery.platformBrightnessOf(context) == Brightness.dark
+      : _themeMode == ThemeMode.dark;
+
+  /// Resolved dark/light without a [BuildContext] (used for widget rendering).
+  bool get effectiveDark => _themeMode == ThemeMode.system
+      ? WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+          Brightness.dark
+      : _themeMode == ThemeMode.dark;
 
   /// Invoked after the schedule changes so reminders can be re-synced.
   Future<void> Function(List<Dose> doses)? onScheduleChanged;
@@ -29,11 +41,20 @@ class AppState extends ChangeNotifier {
   Future<void> load() async {
     _doses = await _storage.loadSchedule();
     _log = await _storage.loadLog();
+    _themeMode = ThemeMode.values[await _storage.loadThemeIndex()];
     _log.prune(DateTime.now());
     _loaded = true;
     notifyListeners();
     await onScheduleChanged?.call(_doses);
     await onStateChanged?.call();
+  }
+
+  /// Flips between light and dark (the app-bar "light mode" toggle).
+  Future<void> toggleTheme(BuildContext context) async {
+    _themeMode = isDark(context) ? ThemeMode.light : ThemeMode.dark;
+    notifyListeners();
+    await _storage.saveThemeIndex(_themeMode.index);
+    await onStateChanged?.call(); // re-render widget in the new theme
   }
 
   /// Re-reads the log from storage (e.g. after a background "Mark as taken").

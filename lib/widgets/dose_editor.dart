@@ -1,128 +1,31 @@
 import 'package:flutter/material.dart';
 
 import '../models/dose.dart';
-import '../state/app_state.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key, required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: state,
-      builder: (context, _) {
-        final doses = state.doses;
-        final theme = Theme.of(context);
-        return Scaffold(
-          appBar: AppBar(
-            // Distinct from the branded "Clarko" home header: a lighter surface
-            // bar with a primary-tinted title, reading clearly as a sub-screen.
-            backgroundColor: theme.colorScheme.surface,
-            foregroundColor: theme.colorScheme.primary,
-            surfaceTintColor: theme.colorScheme.surfaceTint,
-            elevation: 0,
-            scrolledUnderElevation: 3,
-            titleSpacing: 0,
-            title: Row(
-              children: [
-                Icon(Icons.event_note_rounded,
-                    color: theme.colorScheme.primary),
-                const SizedBox(width: 10),
-                Text(
-                  'Schedule',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.favorite_rounded),
-                color: theme.colorScheme.error,
-                tooltip: 'A little something',
-                onPressed: () => _showEasterEgg(context),
-              ),
-            ],
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              for (final dose in doses)
-                _DoseEditor(
-                  dose: dose,
-                  onChanged: state.updateDose,
-                  onRemove: doses.length > 1
-                      ? () => state.removeDose(dose)
-                      : null,
-                ),
-            ],
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _addDose(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Add dose'),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showEasterEgg(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: Image.asset(
-            'assets/minion.gif',
-            fit: BoxFit.contain,
-            gaplessPlayback: true,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _addDose(BuildContext context) {
-    final id = 'dose_${DateTime.now().millisecondsSinceEpoch}';
-    state.addDose(Dose(
-      id: id,
-      label: 'New dose',
-      hour: 12,
-      minute: 0,
-      tablets: [500],
-    ));
-  }
-}
-
-class _DoseEditor extends StatelessWidget {
-  const _DoseEditor({
+/// Editor card for a single [dose]. Edits are pushed back immediately via
+/// [onChanged]. Used both inline and inside the home long-press edit sheet.
+class DoseEditor extends StatelessWidget {
+  const DoseEditor({
+    super.key,
     required this.dose,
     required this.onChanged,
     this.onRemove,
+    this.embedded = false,
   });
 
   final Dose dose;
   final ValueChanged<Dose> onChanged;
   final VoidCallback? onRemove;
 
+  /// When true, renders flat (no surrounding Card) for use inside a sheet.
+  final bool embedded;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
             Row(
               children: [
                 Expanded(
@@ -137,7 +40,7 @@ class _DoseEditor extends StatelessWidget {
                         onChanged(dose.copyWith(label: value)),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Switch(
                   value: dose.enabled,
                   onChanged: (value) =>
@@ -210,8 +113,13 @@ class _DoseEditor extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
+        );
+
+    if (embedded) return body;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(padding: const EdgeInsets.all(16), child: body),
     );
   }
 

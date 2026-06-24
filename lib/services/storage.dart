@@ -12,6 +12,7 @@ import '../models/medication_log.dart';
 class Storage {
   static const _scheduleKey = 'schedule';
   static const _logKey = 'log';
+  static const _themeKey = 'themeMode';
 
   Future<List<Dose>> loadSchedule() async {
     final prefs = await SharedPreferences.getInstance();
@@ -44,5 +45,16 @@ class Storage {
   Future<void> saveLog(MedicationLog log) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_logKey, jsonEncode(log.toJson()));
+  }
+
+  /// Theme preference as a [ThemeMode] index (0 = system, 1 = light, 2 = dark).
+  Future<int> loadThemeIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_themeKey) ?? 0;
+  }
+
+  Future<void> saveThemeIndex(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_themeKey, index);
   }
 }

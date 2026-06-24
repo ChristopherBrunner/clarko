@@ -15,15 +15,18 @@ class WidgetService {
     'ClarkoWidgetProvider',
     'ClarkoWidgetWideProvider',
     'ClarkoWidgetSmallProvider',
+    'ClarkoWidgetTinyProvider',
   ];
-  static const _maxDoses = 2;
+  static const _maxDoses = 4;
 
   static Future<void> render(
     List<Dose> enabledDoses,
     bool Function(Dose) isTaken,
-    int streak,
-  ) async {
+    int streak, {
+    bool dark = false,
+  }) async {
     final doses = enabledDoses.take(_maxDoses).toList();
+    await HomeWidget.saveWidgetData<bool>('dark', dark);
     await HomeWidget.saveWidgetData<int>('streak', streak);
 
     for (var i = 0; i < _maxDoses; i++) {
@@ -75,10 +78,14 @@ Future<void> widgetInteractionCallback(Uri? uri) async {
   log.setTaken(id, now, !log.isTaken(id, now));
   await storage.saveLog(log);
 
+  // Preserve the theme the app last set, so a widget tap doesn't reset it.
+  final dark = await HomeWidget.getWidgetData<bool>('dark', defaultValue: false);
+
   final enabled = doses.where((d) => d.enabled).toList();
   await WidgetService.render(
     enabled,
     (d) => log.isTaken(d.id, now),
     log.currentStreak(doses, now),
+    dark: dark ?? false,
   );
 }

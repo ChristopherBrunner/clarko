@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'services/storage.dart';
 import 'services/widget_service.dart';
@@ -20,8 +21,12 @@ void main() async {
   // Re-sync reminders whenever the schedule changes (including initial load).
   state.onScheduleChanged = notifications.syncSchedule;
   // Refresh the home widget after any state change.
-  state.onStateChanged = () =>
-      WidgetService.render(state.enabledDoses, state.isTaken, state.streak);
+  state.onStateChanged = () => WidgetService.render(
+        state.enabledDoses,
+        state.isTaken,
+        state.streak,
+        dark: state.effectiveDark,
+      );
   // Refresh state when a dose is marked taken from a notification action.
   notifications.onMarkTaken = (_) => state.reloadLog();
 
@@ -64,12 +69,18 @@ class _ClarkoAppState extends State<ClarkoApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Clarko',
-      debugShowCheckedModeBanner: false,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
-      home: HomeScreen(state: widget.state),
+    return ListenableBuilder(
+      listenable: widget.state,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Clarko',
+          debugShowCheckedModeBanner: false,
+          theme: _buildTheme(Brightness.light),
+          darkTheme: _buildTheme(Brightness.dark),
+          themeMode: widget.state.themeMode,
+          home: SplashScreen(state: widget.state),
+        );
+      },
     );
   }
 
@@ -78,21 +89,34 @@ class _ClarkoAppState extends State<ClarkoApp> with WidgetsBindingObserver {
       seedColor: Colors.teal,
       brightness: brightness,
     );
+    final isLight = brightness == Brightness.light;
+    // Icons/text contrasting the surface: dark on light, light on dark.
+    final overlayIcons = isLight ? Brightness.dark : Brightness.light;
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
+        // Blend into the background — no standalone coloured bar.
+        backgroundColor: scheme.surface,
+        foregroundColor: scheme.onSurface,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         elevation: 0,
-        scrolledUnderElevation: 2,
+        scrolledUnderElevation: 0,
         titleTextStyle: TextStyle(
-          color: scheme.onPrimary,
+          color: scheme.onSurface,
           fontSize: 22,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
+        ),
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: overlayIcons,
+          statusBarBrightness: brightness,
+          systemNavigationBarColor: scheme.surface,
+          systemNavigationBarIconBrightness: overlayIcons,
+          systemNavigationBarContrastEnforced: false,
         ),
       ),
       cardTheme: CardTheme(

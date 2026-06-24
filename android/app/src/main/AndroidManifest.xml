@@ -12,6 +12,7 @@
             android:showWhenLocked="true"
             android:exported="true"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -67,6 +68,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/clarko_widget_info_small" />
+        </receiver>
+        <receiver
+            android:name=".ClarkoWidgetTinyProvider"
+            android:label="Clarko 1×1"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/clarko_widget_info_tiny" />
         </receiver>
 
         <!-- home_widget background interactivity (widget button taps) -->

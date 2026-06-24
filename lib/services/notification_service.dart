@@ -2,6 +2,7 @@ import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -39,11 +40,14 @@ Future<void> _markTakenInStorage(String doseId) async {
   // Refresh the home widget so the taken-state shows there too. Never let a
   // widget hiccup undo the (already persisted) log write.
   try {
+    final dark =
+        await HomeWidget.getWidgetData<bool>('dark', defaultValue: false);
     final enabled = doses.where((d) => d.enabled).toList();
     await WidgetService.render(
       enabled,
       (d) => log.isTaken(d.id, now),
       log.currentStreak(doses, now),
+      dark: dark ?? false,
     );
   } catch (e) {
     debugPrint('Widget refresh after mark-taken failed: $e');
@@ -71,7 +75,7 @@ class NotificationService {
       debugPrint('Could not resolve local timezone: $e');
     }
 
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@drawable/ic_notification');
     const settings = InitializationSettings(android: android);
     await _plugin.initialize(
       settings,
@@ -131,8 +135,8 @@ class NotificationService {
   Future<void> _scheduleDose(Dose dose) async {
     await _plugin.zonedSchedule(
       _notificationId(dose.id),
-      'Time for your ${dose.label} dose',
-      '${dose.dosageLabel} · tap to open Clarko',
+      '${dose.label} dose',
+      dose.tablets.map((mg) => '${mg}mg').join(' + '),
       _nextInstanceOf(dose.hour, dose.minute),
       _details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
