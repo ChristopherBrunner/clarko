@@ -57,22 +57,27 @@ class DoseEditor extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.schedule, size: 20, color: theme.colorScheme.primary),
+                Icon(Icons.notifications_outlined,
+                    size: 20, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text('Reminder', style: theme.textTheme.bodyLarge),
                 const Spacer(),
-                OutlinedButton(
-                  onPressed: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: dose.time,
-                    );
-                    if (picked != null) {
-                      onChanged(dose.copyWith(
-                          hour: picked.hour, minute: picked.minute));
-                    }
-                  },
-                  child: Text(dose.time.format(context)),
+                SizedBox(
+                  width: 124,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.schedule, size: 20),
+                    onPressed: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: dose.time,
+                      );
+                      if (picked != null) {
+                        onChanged(dose.copyWith(
+                            hour: picked.hour, minute: picked.minute));
+                      }
+                    },
+                    label: Text(dose.time.format(context)),
+                  ),
                 ),
               ],
             ),
