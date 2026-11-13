@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFF00796B),
+        systemNavigationBarColor: Color(0xFF258555),
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
@@ -88,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen>
             gradient: RadialGradient(
               center: Alignment(0, -0.25),
               radius: 1.2,
-              colors: [Color(0xFF009688), Color(0xFF00796B)],
+              colors: [Color(0xFF2FA66A), Color(0xFF258555)],
             ),
           ),
           child: Stack(

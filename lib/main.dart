@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:home_widget/home_widget.dart';
 
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
@@ -14,19 +13,14 @@ void main() async {
   final notifications = NotificationService.instance;
   await notifications.init();
 
-  // Route home-widget button taps to the background interaction handler.
-  await HomeWidget.registerInteractivityCallback(widgetInteractionCallback);
-
   final state = AppState(Storage());
   // Re-sync reminders whenever the schedule changes (including initial load).
   state.onScheduleChanged = notifications.syncSchedule;
-  // Refresh the home widget after any state change.
-  state.onStateChanged = () => WidgetService.render(
-        state.enabledDoses,
-        state.isTaken,
-        state.streak,
-        dark: state.effectiveDark,
-      );
+  // Redraw the home widget after any state change (it reads the saved state).
+  state.onStateChanged =
+      () => WidgetService.refresh(dark: state.effectiveDark);
+  // A dose ticked off in the app no longer needs its reminder in the tray.
+  state.onDoseTaken = notifications.dismissReminder;
   // Refresh state when a dose is marked taken from a notification action.
   notifications.onMarkTaken = (_) => state.reloadLog();
 
@@ -61,7 +55,8 @@ class _ClarkoAppState extends State<ClarkoApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     // Pick up taken-state changes made while we were backgrounded
-    // (notification actions, the home widget, or a new day).
+    // (notification actions, the home widget, or a new day). A day change
+    // while the app stays open is handled by AppState's own new-day timer.
     if (lifecycle == AppLifecycleState.resumed) {
       widget.state.reloadLog();
     }
@@ -86,7 +81,7 @@ class _ClarkoAppState extends State<ClarkoApp> with WidgetsBindingObserver {
 
   ThemeData _buildTheme(Brightness brightness) {
     final scheme = ColorScheme.fromSeed(
-      seedColor: Colors.teal,
+      seedColor: const Color(0xFF2FA66A), // Clarko green
       brightness: brightness,
     );
     final isLight = brightness == Brightness.light;

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The reminder's icon and sound are only ever looked up by name at runtime
+     (from Dart, via flutter_local_notifications), so release builds' resource
+     shrinking sees them as unused and swaps them for empty placeholders: the
+     reminder then shows a dot instead of the Clarko "C" and plays nothing.
+     Keep them explicitly. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification,@raw/clarko_chime" />

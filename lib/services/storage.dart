@@ -7,8 +7,9 @@ import '../models/medication_log.dart';
 
 /// Thin persistence layer over [SharedPreferences].
 ///
-/// Everything is stored as JSON under a couple of keys. This is the same store
-/// the Android home widget reads from, so keys are kept stable and simple.
+/// Everything is stored as JSON under a couple of keys. The Android home widget
+/// reads (and, for its check buttons, writes) this same store natively — see
+/// `ClarkoStore.kt` — so the keys and JSON shapes must stay in sync with it.
 class Storage {
   static const _scheduleKey = 'schedule';
   static const _logKey = 'log';
@@ -18,7 +19,13 @@ class Storage {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
     final raw = prefs.getString(_scheduleKey);
-    if (raw == null) return Dose.defaults();
+    if (raw == null) {
+      // First run: persist the defaults, so the home widget (which reads the
+      // stored schedule directly) shows the same doses as the app.
+      final defaults = Dose.defaults();
+      await saveSchedule(defaults);
+      return defaults;
+    }
     final list = jsonDecode(raw) as List;
     return list
         .map((e) => Dose.fromJson(e as Map<String, dynamic>))
@@ -33,9 +40,10 @@ class Storage {
 
   Future<MedicationLog> loadLog() async {
     final prefs = await SharedPreferences.getInstance();
-    // Force a fresh read from disk: the home-widget's background isolate
-    // writes the log too, and this isolate's in-memory cache would otherwise
-    // be stale (showing pre-tap state and clobbering it on the next render).
+    // Force a fresh read: the home widget (natively) and the notification
+    // action's background isolate write the log too, and this isolate's
+    // in-memory cache would otherwise be stale (showing pre-tap state and
+    // clobbering it on the next save).
     await prefs.reload();
     final raw = prefs.getString(_logKey);
     if (raw == null) return MedicationLog.empty();

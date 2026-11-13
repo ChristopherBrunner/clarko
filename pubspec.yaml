@@ -55,16 +55,16 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon/clarko_icon.png"
-  adaptive_icon_background: "#009688"
+  adaptive_icon_background: "#2FA66A"
   adaptive_icon_foreground: "assets/icon/clarko_fg.png"
   adaptive_icon_monochrome: "assets/icon/clarko_fg.png"
   min_sdk_android: 21
 
 flutter_native_splash:
-  color: "#009688"
+  color: "#2FA66A"
   image: "assets/icon/clarko_splash.png"
   android_12:
-    color: "#009688"
+    color: "#2FA66A"
     image: "assets/icon/clarko_splash.png"
   android: true
   ios: false
@@ -83,6 +83,7 @@ flutter:
 
   assets:
     - assets/minion.gif
+    - assets/wawa-cat-wawa.gif
     - assets/clarko_c.png
 
   fonts:

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'day.dart';
+
 /// A single scheduled dose (e.g. "Morning" or "Night").
 ///
 /// A dose is made up of one or more [tablets] (each a strength in mg), has a
@@ -28,6 +30,28 @@ class Dose {
   set time(TimeOfDay value) {
     hour = value.hour;
     minute = value.minute;
+  }
+
+  /// Evening/night doses get the moon, daytime ones the sun (app, widget and
+  /// reminders all use this same rule).
+  bool get isNight => hour >= 18 || hour < 5;
+
+  /// The calendar day a tap on this dose's reminder notification refers to.
+  ///
+  /// A reminder that is still sitting in the tray after midnight belongs to
+  /// the day it fired: marking last night's 20:00 dose as taken at 00:10 must
+  /// count for yesterday, not for the day that has just begun. That holds for
+  /// 12 hours after the reminder; anything older is treated as being about
+  /// today's dose.
+  DateTime reminderDay(DateTime now) {
+    // The most recent time this reminder went off.
+    var fired = DateTime(now.year, now.month, now.day, hour, minute);
+    if (now.isBefore(fired)) {
+      fired = DateTime(now.year, now.month, now.day - 1, hour, minute);
+    }
+    return now.difference(fired) < const Duration(hours: 12)
+        ? clarkoDay(fired)
+        : clarkoDay(now);
   }
 
   /// Total dose strength in mg across all tablets.

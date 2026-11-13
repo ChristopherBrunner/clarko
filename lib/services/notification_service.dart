@@ -1,19 +1,38 @@
-import 'dart:ui' show DartPluginRegistrant;
+import 'dart:isolate';
+import 'dart:ui' show Color, DartPluginRegistrant, IsolateNameServer;
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:home_widget/home_widget.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../models/day.dart';
 import '../models/dose.dart';
 import 'storage.dart';
 import 'widget_service.dart';
 
-const _channelId = 'dose_reminders';
+// Android freezes a channel's sound when the channel is first created, so a
+// different sound needs a new channel id (and the old channel removed).
+const _channelId = 'dose_reminders_v2';
+const _retiredChannelIds = ['dose_reminders'];
 const _channelName = 'Dose reminders';
 const _markTakenAction = 'mark_taken';
+
+/// A short, soft two-note chime: android/app/src/main/res/raw/clarko_chime.wav
+/// (swap that file to change the sound, then bump [_channelId]). It is looked
+/// up by name at runtime, so res/raw/keep.xml must keep it in release builds.
+const _reminderSound = RawResourceAndroidNotificationSound('clarko_chime');
+
+/// Clarko green — tints the small icon and action text of the reminder.
+const _brandColor = Color(0xFF2FA66A);
+
+/// Name under which the app's UI isolate listens for "the log was changed by
+/// a reminder action". Action buttons are always handled in a background
+/// isolate — even while the app is open on screen — so without this the open
+/// app would keep showing (and later save) a stale log.
+const _logChangedPortName = 'clarko.reminder_log_changed';
 
 /// Handles "Mark as taken" taps that arrive while the app is not in the
 /// foreground. Runs in a background isolate, so it talks to storage directly
@@ -34,21 +53,23 @@ Future<void> _markTakenInStorage(String doseId) async {
   final doses = await storage.loadSchedule();
   final log = await storage.loadLog();
   final now = DateTime.now();
-  log.setTaken(doseId, now, true);
+
+  // The tap counts for the day the reminder fired, which is not necessarily
+  // today: last night's reminder answered the next morning is about yesterday.
+  var day = clarkoDay(now);
+  for (final dose in doses) {
+    if (dose.id == doseId) day = dose.reminderDay(now);
+  }
+  log.setTaken(doseId, day, true);
   await storage.saveLog(log);
+
+  // Tell the app, if it is running, to pick the change up right away.
+  IsolateNameServer.lookupPortByName(_logChangedPortName)?.send(doseId);
 
   // Refresh the home widget so the taken-state shows there too. Never let a
   // widget hiccup undo the (already persisted) log write.
   try {
-    final dark =
-        await HomeWidget.getWidgetData<bool>('dark', defaultValue: false);
-    final enabled = doses.where((d) => d.enabled).toList();
-    await WidgetService.render(
-      enabled,
-      (d) => log.isTaken(d.id, now),
-      log.currentStreak(doses, now),
-      dark: dark ?? false,
-    );
+    await WidgetService.refresh();
   } catch (e) {
     debugPrint('Widget refresh after mark-taken failed: $e');
   }
@@ -62,11 +83,33 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  /// Small native helper (see MainActivity) for things the notifications
+  /// plugin can't do — currently: clearing a shown reminder without also
+  /// cancelling its daily schedule.
+  static const _native = MethodChannel('clarko/reminders');
+
   /// Called on the UI isolate when a "Mark as taken" action is handled while
   /// the app is alive, so state can refresh.
   void Function(String doseId)? onMarkTaken;
 
+  ReceivePort? _logChangedPort;
+
+  /// Listens for reminder actions handled by the background isolate (see
+  /// [_logChangedPortName]) and forwards them to [onMarkTaken].
+  void _listenForBackgroundChanges() {
+    _logChangedPort?.close();
+    final port = ReceivePort();
+    _logChangedPort = port;
+    // Replace any mapping left behind by a previous run of the UI isolate.
+    IsolateNameServer.removePortNameMapping(_logChangedPortName);
+    IsolateNameServer.registerPortWithName(port.sendPort, _logChangedPortName);
+    port.listen((message) {
+      if (message is String) onMarkTaken?.call(message);
+    });
+  }
+
   Future<void> init() async {
+    _listenForBackgroundChanges();
     tz.initializeTimeZones();
     try {
       final localName = await FlutterTimezone.getLocalTimezone();
@@ -75,6 +118,8 @@ class NotificationService {
       debugPrint('Could not resolve local timezone: $e');
     }
 
+    // The icon is looked up by name at runtime, so res/raw/keep.xml must keep
+    // it from being stripped out of release builds.
     const android = AndroidInitializationSettings('@drawable/ic_notification');
     const settings = InitializationSettings(android: android);
     await _plugin.initialize(
@@ -82,13 +127,21 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onForegroundResponse,
       onDidReceiveBackgroundNotificationResponse: notificationBackgroundHandler,
     );
+
+    // Drop channels from earlier versions so they don't linger in the system
+    // notification settings (reminders are rescheduled on the current one).
+    final platform = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    for (final id in _retiredChannelIds) {
+      await platform?.deleteNotificationChannel(id);
+    }
   }
 
   void _onForegroundResponse(NotificationResponse response) {
     if (response.actionId == _markTakenAction && response.payload != null) {
-      final doseId = response.payload!;
-      // Persist the taken-state, then let the app refresh its UI.
-      _markTakenInStorage(doseId).then((_) => onMarkTaken?.call(doseId));
+      // Persists the taken-state; the app is then told to refresh through the
+      // same port the background isolate uses.
+      _markTakenInStorage(response.payload!);
     }
   }
 
@@ -113,6 +166,17 @@ class NotificationService {
     }
   }
 
+  /// Clears [dose]'s reminder from the notification tray if it is showing
+  /// (e.g. the dose was just ticked off in the app instead of on the
+  /// notification). The daily schedule itself is left untouched.
+  Future<void> dismissReminder(Dose dose) async {
+    try {
+      await _native.invokeMethod<void>('dismiss', {'id': notificationId(dose.id)});
+    } catch (e) {
+      debugPrint('Could not dismiss reminder: $e');
+    }
+  }
+
   static const NotificationDetails _details = NotificationDetails(
     android: AndroidNotificationDetails(
       _channelId,
@@ -121,6 +185,8 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       category: AndroidNotificationCategory.reminder,
+      color: _brandColor,
+      sound: _reminderSound,
       actions: [
         AndroidNotificationAction(
           _markTakenAction,
@@ -134,9 +200,9 @@ class NotificationService {
 
   Future<void> _scheduleDose(Dose dose) async {
     await _plugin.zonedSchedule(
-      _notificationId(dose.id),
-      '${dose.label} dose',
-      dose.tablets.map((mg) => '${mg}mg').join(' + '),
+      notificationId(dose.id),
+      reminderTitle(dose),
+      reminderBody(dose),
       _nextInstanceOf(dose.hour, dose.minute),
       _details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -146,6 +212,15 @@ class NotificationService {
       payload: dose.id,
     );
   }
+
+  /// e.g. "☀️ Morning dose" / "🌙 Night dose".
+  static String reminderTitle(Dose dose) =>
+      '${dose.isNight ? '🌙' : '☀️'} ${dose.label} dose';
+
+  /// e.g. "Time for 500mg + 250mg (750mg)".
+  static String reminderBody(Dose dose) => dose.tablets.isEmpty
+      ? 'Time to take your medication'
+      : 'Time for ${dose.dosageLabel}';
 
   tz.TZDateTime _nextInstanceOf(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
@@ -158,8 +233,9 @@ class NotificationService {
   }
 
   /// Deterministic, stable notification id derived from the dose id so it
-  /// survives reordering and app restarts.
-  static int _notificationId(String doseId) {
+  /// survives reordering and app restarts. The native side derives the same
+  /// id (`ClarkoStore.reminderNotificationId`) — keep the two in sync.
+  static int notificationId(String doseId) {
     var hash = 0;
     for (final code in doseId.codeUnits) {
       hash = (hash * 31 + code) & 0x7fffffff;
